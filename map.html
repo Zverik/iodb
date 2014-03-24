@@ -1,0 +1,230 @@
+<html>
+<head>
+<title>Imagery Offsets Map</title>
+<script>var server = 'http://offsets.textual.ru/';</script>
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.css" />
+<link rel="stylesheet" href="lib/MarkerCluster.css" />
+<link rel="stylesheet" href="lib/MarkerCluster.Default.css" />
+<!--[if lte IE 8]>
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.ie.css" />
+<link rel="stylesheet" href="lib/MarkerCluster.Default.ie.css" />
+<![endif]-->
+<script src="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.js"></script>
+<script src="lib/leaflet.markercluster.js"></script>
+<script src="lib/heatmap.js"></script>
+<script src="lib/heatmap-leaflet.js"></script>
+<script src="lib/TileLayer.Grayscale.js"></script>
+<script src="lib/Permalink.js"></script>
+<style>
+body { margin: 0; }
+#map { height: 100%; }
+#info {
+    position: absolute;
+    left: 50px;
+    top: 10px;
+    background: rgba(255,255,255,0.8);
+    z-index: 999;
+    color: black;
+    font-family: Arial, sans-serif;
+    padding: 5px 10px;
+    line-height: 120%;
+}
+.buttongroup {
+    position: absolute;
+    left: 10px;
+}
+#maptype {
+    top: 70px;
+}
+#filter {
+    top: 105px;
+}
+#depr {
+    top: 140px;
+}
+.button {
+    display: inline-block;
+    padding: 4px 15px;
+    border: 1px solid blue;
+    border-radius: 8px;
+    background: white;
+    color: blue;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    margin: 0 2px;
+    cursor: pointer;
+}
+.button:hover {
+    background: #eee;
+}
+.selected {
+    background: blue;
+    color: white;
+}
+.selected:hover {
+    background: blue;
+}
+</style>
+<script>
+    var offsets = [];
+    var markerLayer;
+    var heatmapLayer;
+    var circleLayer;
+
+    var layerType = 'area'; // map | heat | area
+    var filter = 'all'; // all | calibration | bing | other
+    var showDepr = false;
+
+    function ajax(url, func) {
+        try { http.abort(); } catch(e) {}
+        var http = null;
+        if (window.XMLHttpRequest) {
+            http = new XMLHttpRequest();
+        } else if (window.ActiveXObject) { // Older IE.
+            http = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+        }
+        http.onreadystatechange = function() {
+            if( http.readyState != 4 || http.status != 200 ) return;
+            var result = eval(http.responseText);
+            func(result);
+        };
+        http.open('GET', url, true);
+        http.send(null);
+    }
+
+    function updateLayer() {
+        markerLayer.clearLayers();
+        circleLayer.clearLayers();
+        heatmapLayer.addData([]);
+        var hdata = [];
+        for( var i = 0; i < offsets.length; i++ ) {
+            var offset = offsets[i];
+            if( offset['type'] == 'meta' ) continue;
+            if( !showDepr && offset['deprecated'] ) continue;
+            var ot;
+            if( offset['type'] == 'calibration' ) {
+                if( filter != 'all' && filter != 'calibration' ) continue;
+                ot = 'A calibration object';
+            } else if( offset['type'] == 'offset' ) {
+                if( filter == 'calibration' ) continue;
+                if( offset['imagery'] == 'bing' && filter == 'other' ) continue;
+                if( offset['imagery'] != 'bing' && filter == 'bing' ) continue;
+                ot = 'An imagery offset';
+            } else continue;
+
+            if( layerType == 'map' ) {
+                var title = ot + ' by ' + offset['author'] + ' created on ' + offset['date'] + '<br><i>' + offset['description'] + '</i>';
+                if( offset['deprecated'] ) {
+                    title = title + '<br><br>Deprecated by ' + offset['deprecated']['author'] + ' on '
+                        + offset['deprecated']['date'] + '<br>Reason: <i>' + offset['deprecated']['reason'] + '</i>';
+                }
+                var m = new L.Marker(new L.LatLng(offset['lat'], offset['lon']), { title: offset['description'] });
+                m.bindPopup(title);
+                markerLayer.addLayer(m);
+            } else if( layerType == 'heat' ) {
+                hdata.push({ lat : offset['lat'], lon : offset['lon'], value: 1});
+            } else if( layerType == 'area' ) {
+                new L.Circle(new L.LatLng(offset['lat'], offset['lon']), 10000, {
+                   clickable: false,
+                   stroke: false
+                }).addTo(circleLayer);
+            }
+        }
+        heatmapLayer.addData(hdata);
+        heatmapLayer.redraw();
+    }
+
+    function selectButton( group, name ) {
+        var div = document.getElementById(group);
+        var buttons = div.getElementsByClassName('button');
+        for( var i = 0; i < buttons.length; i++ ) {
+            if( buttons[i].id == name && buttons[i].className.indexOf('selected') < 0 ) {
+                buttons[i].className += ' selected';
+            } else if( buttons[i].id != name && buttons[i].className.indexOf('selected') >= 0 ) {
+                buttons[i].className = 'button';
+            }
+        }
+    }
+
+    function setType( t ) {
+        if( t != layerType) {
+            selectButton('maptype', 't' + t);
+            layerType = t;
+            updateLayer();
+        }
+    }
+
+    function setFilter( f ) {
+        if( f != filter ) {
+            selectButton('filter', 'f' + f);
+            filter = f;
+            updateLayer();
+        }
+    }
+
+    function toggleDeprecated() {
+        showDepr = !showDepr;
+        var button = document.getElementById('dshow');
+        button.className = showDepr ? 'button selected' : 'button';
+        updateLayer();
+    }
+
+    function init() {
+        var map = L.map('map').setView([25, -4], 3);
+        L.tileLayer.grayscale('http://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data &copy; <a href="http://openstreetmap.org/">OpenStreetMap</a> contributors',
+            maxZoom: 14, minZoom: 2
+        }).addTo(map);
+        map.addControl(new L.Control.Permalink());
+
+        markerLayer = new L.MarkerClusterGroup({
+            maxClusterRadius: 50
+        });
+        heatmapLayer = L.TileLayer.heatMap({
+            radius: 10,
+            opacity: 0.8,
+            maxZoom: 9, minZoom: 2
+        });
+        circleLayer = L.layerGroup();
+
+        map.addLayer(markerLayer);
+        map.addLayer(heatmapLayer);
+        map.addLayer(circleLayer);
+
+        selectButton('maptype', 't' + layerType);
+        selectButton('filter', 'f' + filter);
+
+        ajax(server + 'all?format=json', function(data) {
+            for( var i = 0; i < data.length; i++ ) {
+                var offset = data[i];
+                if( offset['type'] == 'meta' ) continue;
+                offsets.push(offset);
+            }
+            updateLayer();
+        });
+    }
+</script>
+</head>
+<body onload="javascript:init();">
+<div id="map"></div>
+<div id="info">
+    <b>Imagery Offset Database Visualization</b><br>
+    <a href="/download/">The data</a> is updated hourly. <a href="/">Return to the list</a>.
+</div>
+<div id="maptype" class="buttongroup">
+    <div class="button selected" id="tmap" onclick="javascript:setType('map');">Markers</div>
+    <div class="button" id="theat" onclick="javscript:setType('heat');">Heatmap</div>
+    <div class="button" id="tarea" onclick="javscript:setType('area');">Area</div>
+</div>
+<div id="filter" class="buttongroup">
+    <div class="button selected" id="fall" onclick="javascript:setFilter('all');">All</div>
+    <div class="button" id="fcalibration" onclick="javascript:setFilter('calibration');">Geometries</div>
+    <div class="button" id="fbing" onclick="javascript:setFilter('bing');">Bing</div>
+    <div class="button" id="fother" onclick="javascript:setFilter('other');">Other Offsets</div>
+</div>
+</body>
+<div id="depr" class="buttongroup">
+    <div class="button" id="dshow" onclick="javascript:toggleDeprecated();">Show Deprecated Offsets</div>
+</div>
+</body>
+</html>

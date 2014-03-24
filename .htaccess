@@ -1,0 +1,21 @@
+DirectoryIndex iodb.php
+
+Options -Indexes -MultiViews +FollowSymLinks
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+RewriteRule ^(download|lib) - [L]
+RewriteRule ^iodb\.php$ - [L]
+RewriteRule ^map map.html [L]
+RewriteRule ^$ iodb.php [QSA,L]
+RewriteRule .* iodb.php?action=$0 [QSA,L]
+</IfModule>
+
+<IfModule mod_charset.c>
+CharsetRecodeMultipartForms Off
+CharsetSourceEnc utf-8
+</IfModule>
+
