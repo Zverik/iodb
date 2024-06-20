@@ -1,60 +1,65 @@
 <? // Imagery Offset Database Web Interface. Written by Ilya Zverev, licenses WTFPL.
+require __DIR__ . '/../vendor/autoload.php';
+
+function oauth_make() {
+  return new \JBelien\OAuth2\Client\Provider\OpenStreetMap([
+      'clientId'     => CLIENT_ID,
+      'clientSecret' => CLIENT_SECRET,
+      'redirectUri'  => 'http://127.0.0.1/level0/index.php?action=callback',
+      'dev'          => strpos(OSM_API_URL, 'dev.openstreetmap') !== false
+  ]);
+}
+
+// Set session parameters.
+$session_lifetime = 365 * 24 * 3600; // a year
+session_set_cookie_params($session_lifetime);
+session_start([
+  'cookie_lifetime' => $session_lifetime,
+  'use_only_cookies' => true,
+  'use_strict_mode' => true,
+]);
+
 header('Content-type: text/html; charset=utf-8');
 $html = true;
-ini_set('session.gc_maxlifetime', 7776000);
-ini_set('session.cookie_lifetime', 7776000);
-session_set_cookie_params(7776000);
-session_start();
 $user = isset($_SESSION['osm_user']) ? $_SESSION['osm_user'] : DEFAULT_USER;
 $is_admin = in_array($user, $administrators);
-$redirect = 'http://'.$_SERVER['HTTP_HOST'].rtrim(dirname($_SERVER['PHP_SELF']), '/\\').'/';
+$redirect = 'https://'.$_SERVER['HTTP_HOST'].rtrim(dirname($_SERVER['PHP_SELF']), '/\\').'/';
 
 $action = req('action', '');
 if( $action == 'login' ) {
-    try {
-         $oauth = new OAuth(CLIENT_ID,CLIENT_SECRET,OAUTH_SIG_METHOD_HMACSHA1,OAUTH_AUTH_TYPE_URI);
-         $request_token_info = $oauth->getRequestToken(REQUEST_ENDPOINT);
-         $_SESSION['secret'] = $request_token_info['oauth_token_secret'];
-         header('Location: '.AUTHORIZATION_ENDPOINT."?oauth_token=".$request_token_info['oauth_token']);
-    } catch(OAuthException $E) {
-         print_r($E);
-    }
-    exit;
+  $oauth = oauth_make();
+  $options = ['scope' => 'read_prefs'];
+  $auth_url = $oauth->getAuthorizationUrl($options);
+  $_SESSION['oauth2state'] = $oauth->getState();
+  header('Location: '.$auth_url);
+  exit;
 } elseif( $action == 'oauth' ) {
-    if(!isset($_GET['oauth_token'])) {
-        echo "Error! There is no OAuth token!";
-        exit;
+	if(empty($_GET['code'])) {
+		echo "Error: there is no OAuth code.";
+	} elseif(empty($_SESSION['oauth2state'])) {
+		echo "Error: there is no OAuth state.";
+    print_r($_SESSION);
+  } elseif(empty($_GET['state']) || $_GET['state'] != $_SESSION['oauth2state']) {
+    echo "Error: invalid state.";
+	} else {
+    unset($_SESSION['oauth2state']);
+		try {
+      $oauth = oauth_make();
+      $accessToken = $oauth->getAccessToken(
+        'authorization_code', ['code' => $_GET['code']]
+      );
+      $resourceOwner = $oauth->getResourceOwner($accessToken);
+      $_SESSION['osm_user'] = $resourceOwner->getDisplayName();
+
+      // Переход на станицу успеха
+      header("Location: $redirect");
+    } catch (Exception $e) {
+			echo("<pre>Exception:\n");
+			print_r($e);
+			echo '</pre>';
     }
-
-    if(!isset($_SESSION['secret'])) {
-        echo "Error! There is no OAuth secret!";
-        exit;
-    }
-    try {
-        $oauth = new OAuth(CLIENT_ID, CLIENT_SECRET, OAUTH_SIG_METHOD_HMACSHA1, OAUTH_AUTH_TYPE_URI);
-        $oauth->enableDebug();
-
-        $oauth->setToken($_GET['oauth_token'], $_SESSION['secret']);
-        $access_token_info = $oauth->getAccessToken(TOKEN_ENDPOINT);
-
-        $token = strval($access_token_info['oauth_token']);
-        $secret = strval($access_token_info['oauth_token_secret']);
-
-        $oauth->setToken($token, $secret);
-
-        $oauth->fetch(OSM_API."user/details");
-        $user_details = $oauth->getLastResponse();
-
-        $xml = simplexml_load_string($user_details);       
-        $_SESSION['osm_user'] = strval($xml->user['display_name']);
-
-        // Переход на станицу успеха
-        header("Location: $redirect");
-    } catch(OAuthException $E) {
-        echo("Exception:\n");
-        print_r($E);
-    }
-    exit;
+	}
+  exit;
 } elseif( $action == 'logout' ) {
     unset($_SESSION['osm_user']);
     header("Location: $redirect");
@@ -72,7 +77,7 @@ if( $action == 'login' ) {
     } elseif( $admact == 'undeprecate' && $is_admin ) {
         undeprecate(req('offsetid', $_REQUEST['offsetids']));
     } elseif( $admact == 'delete' && $is_admin ) {
-        error('Deleting is disabled for now. Please contact Zverik if you really need to delete something.');
+        error('Deleting is disabled for now. Please contact an admin if you really need to delete something.');
         delete_impl(req('offsetid', $_REQUEST['offsetids']));
     } else
         error('Unknown web action: '.$admact);
@@ -81,17 +86,18 @@ if( $action == 'login' ) {
     header("Location: $redirect");
 }
 
-?><html>
+?><!doctype html><html lang="en">
 <head>
 <title>Imagery Offset Database</title>
-<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css" />
-<script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js"></script>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ==" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js" integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ==" crossorigin=""></script>
 <script>
 var map, marker, lastdiv, infobox;
 function init() {
     map = L.map('regionmap').setView([54.998, -7.332], 9);
-    L.tileLayer('http://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: 'Map data &copy; <a href="http://openstreetmap.org/">OpenStreetMap</a> contributors',
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
         maxZoom: 15, minZoom: 6
     }).addTo(map);
     marker = new L.LayerGroup().addTo(map);
@@ -128,7 +134,7 @@ function updateOffset(div) {
     var y = (1-Math.log(Math.tan(lat*Math.PI/180) + 1/Math.cos(lat*Math.PI/180))/Math.PI) * 256;
     var dx = Math.floor(x / 256);
     var dy = Math.floor(y / 256);
-    document.getElementById('worldmap').style.background = 'url(http://tile.openstreetmap.org/1/' + dx + '/' + dy + '.png)';
+    document.getElementById('worldmap').style.background = 'url(https://tile.openstreetmap.org/1/' + dx + '/' + dy + '.png)';
     document.getElementById('worldpos').style.left = (Math.round(x) - 13 - dx*256) + 'px';
     document.getElementById('worldpos').style.top = (Math.round(y) - 41 - dy*256) + 'px';
     document.getElementById('worldpos').style.visibility = 'inherit';
@@ -274,7 +280,7 @@ h2 {
     height: 256px;
 }
 #worldmap {
-    background: url(http://tile.openstreetmap.org/0/0/0.png);
+    background: url(https://tile.openstreetmap.org/0/0/0.png);
     bottom: 270px;
 }
 #regionmap {
@@ -365,9 +371,9 @@ $count = $has_table ? request_one('select count(1) from iodb where 1=1 '.$where)
 if( $count === null ) $count = 0;
 ?>
 <ul id="menu">
-    <li><a href="http://wiki.openstreetmap.org/wiki/Imagery_Offset_Database">What is this?</a></li>
-    <li><a href="http://wiki.openstreetmap.org/wiki/Imagery_Offset_Database/Quick_Start">JOSM Tutorial</a></li>
-    <li><a href="http://wiki.openstreetmap.org/wiki/Imagery_Offset_Database/API">API</a></li>
+    <li><a href="https://wiki.openstreetmap.org/wiki/Imagery_Offset_Database">What is this?</a></li>
+    <li><a href="https://wiki.openstreetmap.org/wiki/Imagery_Offset_Database/Quick_Start">JOSM Tutorial</a></li>
+    <li><a href="https://wiki.openstreetmap.org/wiki/Imagery_Offset_Database/API">API</a></li>
     <li><a href="/map">The Map</a></li>
     <li><a href="/download">The Data</a></li>
     <li><? if(!$user) { ?><a href="/login">Login</a><? } else { ?><a href="/logout">Logout</a><? } ?></li>
