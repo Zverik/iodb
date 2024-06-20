@@ -4,11 +4,6 @@
 const CLIENT_ID     = '';
 const CLIENT_SECRET = '';
 
-const AUTHORIZATION_ENDPOINT = 'https://www.openstreetmap.org/oauth/authorize';
-const TOKEN_ENDPOINT         = 'https://www.openstreetmap.org/oauth/access_token';
-const REQUEST_ENDPOINT       = 'https://www.openstreetmap.org/oauth/request_token';
-const OSM_API                = 'https://api.openstreetmap.org/api/0.6/';
-
 // Database credentials
 const DB_HOST     = 'localhost';
 const DB_USER     = 'iodb';

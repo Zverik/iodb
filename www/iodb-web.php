@@ -6,7 +6,7 @@ function oauth_make() {
       'clientId'     => CLIENT_ID,
       'clientSecret' => CLIENT_SECRET,
       'redirectUri'  => 'http://127.0.0.1/level0/index.php?action=callback',
-      'dev'          => strpos(OSM_API_URL, 'dev.openstreetmap') !== false
+      'dev'          => false
   ]);
 }
 
