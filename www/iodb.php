@@ -496,6 +496,8 @@ function db_dump() {
     if( $argc > 1 ) {
         if( $argv[1] == 'loc' )
             find_locations();
+        else if( $argv[1] == 'create' )
+            create_table();
         else if( $argv[1] == 'json' )
             get_json($query);
         else if( $argv[1] == 'xml' )
@@ -503,7 +505,7 @@ function db_dump() {
         else
             print "Unknown action\n";
     } else {
-        print "IODB Command line\nSyntax: php $argv[0] {xml|json|loc}\n";
+        print "IODB Command line\nSyntax: php $argv[0] {xml|json|loc|create}\n";
     }
 }
 
@@ -545,7 +547,7 @@ function find_locations() {
     $result->free();
 
     foreach( $queue as $offset ) {
-        $url = 'http://nominatim.openstreetmap.org/reverse?format=json&zoom=16&addressdetails=0'
+        $url = 'https://nominatim.openstreetmap.org/reverse?format=json&zoom=16&addressdetails=0'
               .'&email=zverik%40textual.ru&lat='.$offset['lat'].'&lon='.$offset['lon'];
         $response = json_decode(file_get_contents($url), true);
         if( isset($response) && (isset($response['display_name']) || isset($response['error'])) ) {

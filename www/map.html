@@ -1,7 +1,10 @@
-<html>
+<!doctype html>
+<html lang="en">
 <head>
 <title>Imagery Offsets Map</title>
-<script>var server = 'http://offsets.textual.ru/';</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<script>var server = 'https://offsets.textual.ru/';</script>
 <link rel="stylesheet" href="lib/leaflet.css" />
 <link rel="stylesheet" href="lib/MarkerCluster.css" />
 <link rel="stylesheet" href="lib/MarkerCluster.Default.css" />
@@ -167,8 +170,8 @@ body { margin: 0; }
 
     function init() {
         var map = L.map('map').setView([25, -4], 3);
-        L.tileLayer.grayscale('http://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: 'Map data &copy; <a href="http://openstreetmap.org/">OpenStreetMap</a> contributors',
+        L.tileLayer.grayscale('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
             maxZoom: 14, minZoom: 2
         }).addTo(map);
         map.addControl(new L.Control.Permalink());
