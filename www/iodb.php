@@ -1,4 +1,4 @@
-<? // Imagery Offset and Calibration Object Database. Written by Ilya Zverev, licenses WTFPL.
+<?php // Imagery Offset and Calibration Object Database. Written by Ilya Zverev, licenses WTFPL.
 require('config.php');
 
 header('Access-Control-Allow-Origin: *'); // CORS

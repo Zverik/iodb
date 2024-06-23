@@ -1,4 +1,4 @@
-<? // IODB configuration file. Written by Ilya Zverev, licensed WTFPL.
+<?php // IODB configuration file. Written by Ilya Zverev, licensed WTFPL.
 
 // OpenStreetMap OAuth parameters, see http://wiki.openstreetmap.org/wiki/OAuth
 const CLIENT_ID     = '';

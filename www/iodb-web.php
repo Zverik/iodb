@@ -1,11 +1,12 @@
-<? // Imagery Offset Database Web Interface. Written by Ilya Zverev, licenses WTFPL.
+<?php // Imagery Offset Database Web Interface. Written by Ilya Zverev, licenses WTFPL.
 require __DIR__ . '/../vendor/autoload.php';
 
+$redirect = 'https://'.$_SERVER['HTTP_HOST'].rtrim(dirname($_SERVER['PHP_SELF']), '/\\').'/';
 function oauth_make() {
   return new \JBelien\OAuth2\Client\Provider\OpenStreetMap([
       'clientId'     => CLIENT_ID,
       'clientSecret' => CLIENT_SECRET,
-      'redirectUri'  => 'http://127.0.0.1/level0/index.php?action=callback',
+      'redirectUri'  => $redirect.'?action=oauth',
       'dev'          => false
   ]);
 }
@@ -23,7 +24,6 @@ header('Content-type: text/html; charset=utf-8');
 $html = true;
 $user = isset($_SESSION['osm_user']) ? $_SESSION['osm_user'] : DEFAULT_USER;
 $is_admin = in_array($user, $administrators);
-$redirect = 'https://'.$_SERVER['HTTP_HOST'].rtrim(dirname($_SERVER['PHP_SELF']), '/\\').'/';
 
 $action = req('action', '');
 if( $action == 'login' ) {
@@ -326,7 +326,7 @@ form {
 }
 </style>
 </head>
-<?
+<?php
 $res = $db->query('select 1 from iodb');
 if( $res ) {
     $has_table = true;
@@ -365,8 +365,8 @@ if( isset($_REQUEST['filter']) ) {
 }
 ?>
 <body onload="javascript:init();">
-<h1><? if( strlen($before) > 0 || strlen($where) > 0 ) { ?><a href="/">Imagery Offset Database</a><? } else { ?>Imagery Offset Database<? } ?></h1>
-<?
+<h1><?php if( strlen($before) > 0 || strlen($where) > 0 ) { ?><a href="/">Imagery Offset Database</a><?php } else { ?>Imagery Offset Database<?php } ?></h1>
+<?php
 $count = $has_table ? request_one('select count(1) from iodb where 1=1 '.$where) : 0;
 if( $count === null ) $count = 0;
 ?>
@@ -376,32 +376,32 @@ if( $count === null ) $count = 0;
     <li><a href="https://wiki.openstreetmap.org/wiki/Imagery_Offset_Database/API">API</a></li>
     <li><a href="/map">The Map</a></li>
     <li><a href="/download">The Data</a></li>
-    <li><? if(!$user) { ?><a href="/login">Login</a><? } else { ?><a href="/logout">Logout</a><? } ?></li>
+    <li><?php if(!$user) { ?><a href="/login">Login</a><?php } else { ?><a href="/logout">Logout</a><?php } ?></li>
     <li class="entries"><?=$count ?> entries</li>
 </ul>
-<? if( $is_admin && !$has_table ) { ?>
+<?php if( $is_admin && !$has_table ) { ?>
 <p>There seems to be no <tt>iodb</tt> table in the database. <a href="createdb">Create it</a>.</p>
-<? exit; } ?>
-<? if( strlen($before) == 0 && false ): ?>
+<?php exit; } ?>
+<?php if( strlen($before) == 0 && false ): ?>
 <p>This website is in development. Sorry for any missing functionality.</p>
-<? endif; ?>
+<?php endif; ?>
 <div class="map" id="worldmap"><div id="worldpos"></div><div id="maplink"></div></div>
 <div class="map" id="regionmap"></div>
-<? if( $user ) { ?>
+<?php if( $user ) { ?>
 <form name="form" action="web" method="post">
 <input type="hidden" name="webact" value="">
 <input type="hidden" name="offsetid" value="">
 <input type="hidden" name="message" value="">
-<? } ?>
-<? if( $is_admin ): ?>
+<?php } ?>
+<?php if( $is_admin ): ?>
 <p><a href="" onclick="javascript:selectall(); return false;">Select all</a>, <a href="" onclick="javascript:invertall(); return false;">invert</a>. <a href="?filter=flagged">Show flagged</a>.
 Things to do with selected entires:
 <input type="button" value="Unflag" onclick="javascript:submitAction('', 'unflag', 'Unflag '+count_check()+' selected offsets?', false);">
 <input type="button" value="Undeprecate" onclick="javascript:submitAction('', 'undeprecate', 'Remove deprecation record for '+count_check()+' selected offsets?', false)">
 <input type="button" value="Delete" onclick="javascript:submitAction('', 'delete', 'Delete '+count_check()+' selected offsets? This operation is irreversible!', false);">
 </p>
-<? endif; ?>
-<?
+<?php endif; ?>
+<?php
 $cnt = 0;
 $days = 0;
 $print_time_format = 'jS \o\f F, Y';
@@ -431,8 +431,8 @@ while( $cnt < 100 && $days < 10 ) {
     $days++;
 }
 ?>
-<? if( $user ) { ?></form><? } ?>
-<?
+<?php if( $user ) { ?></form><?php } ?>
+<?php
     $filterq = isset($_REQUEST['filter']) ? '&filter='.$_REQUEST['filter'] : '';
     if( isset($_REQUEST['fid'] ) )
         $filterq .= '&fid='.$_REQUEST['fid'];
@@ -440,7 +440,7 @@ while( $cnt < 100 && $days < 10 ) {
     <div id="nextpage"><a href="?before=<?=date('Y-m-d', $time + 24*3600).$filterq ?>">Next page</a></div>
 </body>
 </html>
-<?
+<?php
 function print_offset( $offset ) {
     global $time_shown, $time, $is_admin, $before, $user;
     if( !$time_shown ) {
@@ -462,10 +462,10 @@ function print_offset( $offset ) {
     }
 ?>
     <div class="<?=$class ?>" id="o<?=$id ?>" lat="<?=$offset['lat'] ?>" lon="<?=$offset['lon'] ?>">
-        <? if( $is_admin ) { ?><input type="checkbox" name="offsetids[]" value="<?=$id ?>"><? } ?>
-        <? if( $deprecated ) { print '<s>'.$offset['author'].'</s> '; } ?><?=$author.$country ?>: <span class="description"><?=$description ?></span><? if( $is_admin && isset($offset['flagged']) ) { ?>&nbsp;<img src="lib/images/flag.png" style="vertical-align: middle;"><? } ?>
+        <?php if( $is_admin ) { ?><input type="checkbox" name="offsetids[]" value="<?=$id ?>"><?php } ?>
+        <?php if( $deprecated ) { print '<s>'.$offset['author'].'</s> '; } ?><?=$author.$country ?>: <span class="description"><?=$description ?></span><?php if( $is_admin && isset($offset['flagged']) ) { ?>&nbsp;<img src="lib/images/flag.png" style="vertical-align: middle;"><?php } ?>
         <div class="infobox" id="i<?=$id ?>">
-<?
+<?php
     // initialize filters and actions (to unclutter js code)
     $filters = array();
     $beforef = ''; //strlen($before) > 0 ? "&before=$before" : '';
@@ -501,8 +501,8 @@ function print_offset( $offset ) {
 ?>
             <div class="filters">Filter by <?= implode(', ', $filters) ?></div>
             <div class="offsetinfo">
-                <? if( isset($offset['location']) ) { ?><?=htmlspecialchars($offset['location']) ?><br><br><? } ?>
-                <b><?
+                <?php if( isset($offset['location']) ) { ?><?=htmlspecialchars($offset['location']) ?><br><br><?php } ?>
+                <b><?php
     if( isset($offset['imagery']) ) {
         $h_R = 6378135;
         $h_slat = sin(($offset['imlat'] - $offset['lat']) * M_PI / 360.0);
@@ -523,21 +523,21 @@ function print_offset( $offset ) {
             print 'geometry';
     }
 ?></b><br>
-                <? if( isset($offset['imagery']) ) { ?>Imagery: <tt><?=htmlspecialchars($offset['imagery']) ?></tt><? if( $offset['min_zoom'] > 0 || $offset['max_zoom'] < 29 ) { ?> [z<?=$offset['min_zoom'] ?>-z<?=$offset['max_zoom'] ?>]<? } ?><br><? } ?>
+                <?php if( isset($offset['imagery']) ) { ?>Imagery: <tt><?=htmlspecialchars($offset['imagery']) ?></tt><?php if( $offset['min_zoom'] > 0 || $offset['max_zoom'] < 29 ) { ?> [z<?=$offset['min_zoom'] ?>-z<?=$offset['max_zoom'] ?>]<?php } ?><br><?php } ?>
                 Created by <?=htmlspecialchars($offset['author']) ?> on <?=$offset['offset_date'] ?><br>
                 <i><?=htmlspecialchars($offset['description']) ?></i>
-<? if( isset($offset['abandon_date']) ) { ?><br><br>
+<?php if( isset($offset['abandon_date']) ) { ?><br><br>
                 Deprecated by <?=htmlspecialchars($offset['abandon_author']) ?> on <?=$offset['abandon_date'] ?><br>
                 <i><?=htmlspecialchars($offset['abandon_reason']) ?></i>
-<? } ?>
-<? if( isset($offset['flagged']) ) { ?><br><br>
+<?php } ?>
+<?php if( isset($offset['flagged']) ) { ?><br><br>
                 <span style="color: red;">This entry has been reported.</span>
-                <? if( $is_admin ) { ?><br><i><?=htmlspecialchars($offset['flagged']) ?></i><? } ?>
-<? } ?>
+                <?php if( $is_admin ) { ?><br><i><?=htmlspecialchars($offset['flagged']) ?></i><?php } ?>
+<?php } ?>
             </div>
-            <? if( $user ) { ?><div class="actions"><?= implode(', ', $actions) ?></div><? } ?>
+            <?php if( $user ) { ?><div class="actions"><?= implode(', ', $actions) ?></div><?php } ?>
         </div>
     </div>
-<? 
+<?php 
 }
 ?>
