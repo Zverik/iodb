@@ -1,12 +1,13 @@
 <?php // Imagery Offset Database Web Interface. Written by Ilya Zverev, licenses WTFPL.
 require __DIR__ . '/../vendor/autoload.php';
 
-$redirect = 'https://'.$_SERVER['HTTP_HOST'].rtrim(dirname($_SERVER['PHP_SELF']), '/\\').'/';
+$redirect = $_SERVER['REQUEST_SCHEME'].'://'.$_SERVER['HTTP_HOST'].rtrim(dirname($_SERVER['PHP_SELF']), '/\\').'/';
 function oauth_make() {
+  global $redirect;
   return new \JBelien\OAuth2\Client\Provider\OpenStreetMap([
       'clientId'     => CLIENT_ID,
       'clientSecret' => CLIENT_SECRET,
-      'redirectUri'  => $redirect.'?action=oauth',
+      'redirectUri'  => $redirect.'oauth',
       'dev'          => false
   ]);
 }
