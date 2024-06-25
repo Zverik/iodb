@@ -39,7 +39,6 @@ if( $action == 'login' ) {
 		echo "Error: there is no OAuth code.";
 	} elseif(empty($_SESSION['oauth2state'])) {
 		echo "Error: there is no OAuth state.";
-    print_r($_SESSION);
   } elseif(empty($_GET['state']) || $_GET['state'] != $_SESSION['oauth2state']) {
     echo "Error: invalid state.";
 	} else {
