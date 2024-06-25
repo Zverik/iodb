@@ -1,3 +1,4 @@
 *.swp
 www/config.php
 vendor/
+www/download/*.gz
