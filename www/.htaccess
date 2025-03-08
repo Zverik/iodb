@@ -11,7 +11,7 @@ RewriteRule ^(download|lib) - [L]
 RewriteRule ^iodb\.php$ - [L]
 RewriteRule ^map map.html [L]
 RewriteRule ^$ iodb.php [QSA,L]
-RewriteRule .* iodb.php?action=$0 [QSA,L]
+RewriteRule .* iodb.php?action=$0 [QSA,L,UnsafeAllow3F]
 </IfModule>
 
 <IfModule mod_charset.c>
